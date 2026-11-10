@@ -7,7 +7,10 @@ import type {
   IRaceRepository,
   ITeamRepository,
   IUserRepository,
+  ISeasonPropsRepository,
+  ISeasonQuestionLibraryRepository,
 } from "@/server/repositories";
+import { loadSeasonBonus } from "@/server/queries/shared/season-bonus";
 import { InvariantViolationError, NotFoundError } from "@/server/domain/errors";
 import { LeagueStandings } from "@/server/domain/league-standings";
 import { Team } from "@/server/domain/team";
@@ -34,6 +37,8 @@ export class StartNextSeasonCommand implements IStartNextSeasonCommand {
     private readonly history: ILeagueHistoryRepository,
     private readonly notifications: INotificationRepository,
     private readonly calendars: IMotorsportCalendarRepository,
+    private readonly seasonProps: ISeasonPropsRepository,
+    private readonly seasonQuestions: ISeasonQuestionLibraryRepository,
   ) {}
 
   async execute(payload: StartNextSeasonPayload): Promise<void> {
@@ -84,8 +89,10 @@ export class StartNextSeasonCommand implements IStartNextSeasonCommand {
     const now = new Date().toISOString();
 
     // 1. Freeze the finished season, with a copy of the league and teams as they were.
+    const bonus = await loadSeasonBonus({ props: this.seasonProps, libraries: this.seasonQuestions }, league, teams, seasonRaces);
     history.addSeason({
       ...buildSeasonRecord({
+        bonus,
         seasonId: league.currentSeasonId ?? crypto.randomUUID(),
         label: league.displaySeasonLabel(seasonRaces, now.slice(0, 4)),
         endedAt: league.seasonEndedAt ?? now,

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
 import { useUser } from "@/app/context/UserContext";
 import { useLeague } from "@/app/context/LeagueContext";
 import { orpc } from "@/lib/orpc/client";
@@ -90,6 +92,10 @@ export default function PredictPage() {
   );
   const data = openRacesQuery.data;
   const pastData = pastRacesQuery.data;
+  const seasonBets = useQuery(
+    orpc.seasonProps.get.queryOptions({ input: { leagueId: activeLeagueId ?? "" }, enabled: !!user && !!activeLeagueId }),
+  ).data;
+  const seasonBetsOpen = !!seasonBets?.enabled && !!seasonBets.open;
 
   const { displayName, isProxy, selectedPlayerId, next, prev } =
     useTeammateSelector(data?.teammates ?? []);
@@ -135,6 +141,14 @@ export default function PredictPage() {
           <PredictPagePlaceholder />
         ) : (
           <div className="space-y-5">
+            {seasonBetsOpen && (
+              <Button asChild variant="outline" size="sm">
+                <Link href="/predict/season">
+                  Season picks
+                  {seasonBets?.canPick && " (open)"}
+                </Link>
+              </Button>
+            )}
 
             <RaceSelector
               races={sortedRaces}

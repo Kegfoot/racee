@@ -14,3 +14,5 @@ export type { ILeagueHistoryRepository } from "./league-history/ILeagueHistoryRe
 export type { IProfilePrivacyRepository } from "./profile-privacy/IProfilePrivacyRepository";
 export type { ITrophyArtRepository } from "./trophy-art/ITrophyArtRepository";
 export type { IMotorsportCalendarRepository } from "./motorsport-calendar/IMotorsportCalendarRepository";
+export type { ISeasonPropsRepository } from "./season-props/ISeasonPropsRepository";
+export type { ISeasonQuestionLibraryRepository } from "./season-question-library/ISeasonQuestionLibraryRepository";

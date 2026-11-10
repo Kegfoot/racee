@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageShell } from "@/components/ui/page-shell";
 import { OverhaulNotice } from "@/components/ui/overhaul-notice";
-import { CalendarIcon, FlagIcon, UserIcon, KeyRoundIcon, ShieldIcon, FlagTriangleRightIcon, HistoryIcon, CalendarRangeIcon } from "lucide-react";
+import { CalendarIcon, FlagIcon, UserIcon, KeyRoundIcon, ShieldIcon, FlagTriangleRightIcon, HistoryIcon, CalendarRangeIcon, HelpCircleIcon } from "lucide-react";
 import { getSession } from "@/server/auth/server";
 
 const CARDS = [
@@ -17,6 +17,12 @@ const CARDS = [
     icon: CalendarRangeIcon,
     title: "Seasons",
     description: "Set each season's start and end dates, and set up next season ahead of time.",
+  },
+  {
+    href: "/admin/season-questions",
+    icon: HelpCircleIcon,
+    title: "Season questions",
+    description: "Year-long prop bets for leagues to pick from, and their correct answers at season's end.",
   },
   {
     href: "/admin/races",

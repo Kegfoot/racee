@@ -9,7 +9,10 @@ import type {
   IRaceRepository,
   ITeamRepository,
   IUserRepository,
+  ISeasonPropsRepository,
+  ISeasonQuestionLibraryRepository,
 } from "@/server/repositories";
+import { loadSeasonBonus } from "@/server/queries/shared/season-bonus";
 import type { Team } from "@/server/domain/team";
 import type {
   ITeamDashboardQuery,
@@ -66,6 +69,8 @@ export class TeamDashboardQuery implements ITeamDashboardQuery {
     private readonly races: IRaceRepository,
     private readonly books: IRacePredictionBookRepository,
     private readonly users: IUserRepository,
+    private readonly seasonProps: ISeasonPropsRepository,
+    private readonly seasonQuestions: ISeasonQuestionLibraryRepository,
   ) {}
 
   async execute(leagueId: string, teamId: string | null, actorUserId: string): Promise<TeamDashboardResult> {
@@ -100,7 +105,11 @@ export class TeamDashboardQuery implements ITeamDashboardQuery {
 
     // ---- Driver scoring (matches the standings page) ----
     const individual = new Map((standings?.individual ?? []).map((u) => [u.userId, u.raceScores]));
-    const driverRanking = (standings?.rankIndividual(league.mulliganCount) ?? []).filter((r) => league.showsInStandings(r.userId));
+    const bonus = await loadSeasonBonus({ props: this.seasonProps, libraries: this.seasonQuestions }, league, teams, seasonRaces);
+    const driverRanking = (standings?.rankIndividual(league.mulliganCount) ?? [])
+      .filter((r) => league.showsInStandings(r.userId))
+      .map((r) => ({ ...r, total: r.total + (bonus.players.get(r.userId) ?? 0) }))
+      .sort((a, b) => b.total - a.total);
     const driverTotal = new Map(driverRanking.map((r) => [r.userId, r.total]));
     const driverRank = new Map(driverRanking.map((r, i) => [r.userId, i + 1]));
 
@@ -117,7 +126,8 @@ export class TeamDashboardQuery implements ITeamDashboardQuery {
       teamRacePoints.set(t.teamId, byRace);
       teamRaceEntries.set(t.teamId, entries);
     }
-    const teamTotal = (id: string) => [...(teamRacePoints.get(id)?.values() ?? [])].reduce((a, b) => a + b, 0);
+    const teamTotal = (id: string) =>
+      [...(teamRacePoints.get(id)?.values() ?? [])].reduce((a, b) => a + b, 0) + (bonus.teams.get(id) ?? 0);
 
     // ---- Prop accuracy from prediction books ----
     const allMemberIds = [...new Set(teams.flatMap((t) => [...t.memberIds]))];
@@ -158,7 +168,9 @@ export class TeamDashboardQuery implements ITeamDashboardQuery {
       for (const id of team.memberIds) addTally(tally, propTally.get(id) ?? new Map());
       return tally;
     };
-    const teamRanking = standings?.rankTeams() ?? [];
+    const teamRanking = (standings?.rankTeams() ?? [])
+      .map((r) => ({ ...r, total: r.total + (bonus.teams.get(r.teamId) ?? 0) }))
+      .sort((a, b) => b.total - a.total);
     const summaries: TeamSummaryDTO[] = teams.map((team) => {
       const driverPts = team.memberIds.map((id) => driverTotal.get(id) ?? 0);
       const racesWithTeamScore = [...(teamRacePoints.get(team.teamId)?.keys() ?? [])].filter((id) => gradedIds.has(id)).length;

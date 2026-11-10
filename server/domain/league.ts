@@ -87,6 +87,8 @@ export class League {
   /** "current" until the season ends, then the id it will keep in the history book. */
   get currentSeasonKey(): string { return this.props.currentSeasonId ?? "current"; }
   get currentSeasonId(): string | null { return this.props.currentSeasonId; }
+  /** Identifies the season in progress for things stored per season (stable through end / reopen, new for each next season). */
+  get seasonKey(): string { return this.props.seasonRacesAfter ? `after-${this.props.seasonRacesAfter.slice(0, 10)}` : "first"; }
   get isPrivate(): boolean { return this.props.isPrivate; }
   get motorsportSeasonId(): string | null { return this.props.motorsportSeasonId; }
   get seasonWindowStart(): string | null { return this.props.seasonWindowStart; }

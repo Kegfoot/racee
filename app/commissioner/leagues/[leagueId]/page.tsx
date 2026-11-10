@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ORPCError } from "@orpc/client";
-import { ChevronLeft, Settings2, Users, UserCheck, ClipboardCheck, Trophy } from "lucide-react";
+import { ChevronLeft, Settings2, Users, UserCheck, ClipboardCheck, Trophy, ListChecks } from "lucide-react";
 import { PageShell } from "@/components/ui/page-shell";
 import { QueryLoading } from "@/components/ui/query-state";
 import { orpc } from "@/lib/orpc/client";
@@ -34,6 +34,12 @@ const CARDS = [
     icon: ClipboardCheck,
     title: "Submission Status",
     description: "See who's submitted and who's outstanding for a race.",
+  },
+  {
+    slug: "season-props",
+    icon: ListChecks,
+    title: "Season bets",
+    description: "Year-long prop bets: questions, scale, lock date and when points show.",
   },
   {
     slug: "season",

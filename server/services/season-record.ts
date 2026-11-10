@@ -12,6 +12,7 @@ import type {
 import { mergeReplacedRaceColumns, orderSeasonRaces } from "@/lib/race-order";
 import { getMulliganedRaceIds } from "@/lib/scoring";
 import { competitionRanks, computeRaceMedals, countRowMedals, type Medal } from "@/lib/medals";
+import { NO_BONUS, type SeasonBonus } from "@/server/services/season-props";
 
 /**
  * Builds a season's record from the live standings: final places, totals (with
@@ -29,8 +30,11 @@ export function buildSeasonRecord(args: {
   standings: LeagueStandings | null;
   teams: readonly Team[];
   namesById: ReadonlyMap<string, string>;
+  /** Season-bet points added to the totals (they never create race medals). */
+  bonus?: SeasonBonus;
 }): SeasonRecord {
   const { league, standings, teams, namesById } = args;
+  const bonus = args.bonus ?? NO_BONUS;
 
   const columns: SeasonRaceColumn[] = mergeReplacedRaceColumns(
     orderSeasonRaces(args.races, (r) => r.raceId).map((r) => ({
@@ -76,7 +80,8 @@ export function buildSeasonRecord(args: {
   const playerRows = playerScores.map((p) => {
     const mulliganed = getMulliganedRaceIds(p.raceScores, league.mulliganCount);
     const values = Object.values(p.scores);
-    const gross = values.reduce((sum, v) => sum + v, 0);
+    const seasonBonus = bonus.players.get(p.userId) ?? 0;
+    const gross = values.reduce((sum, v) => sum + v, 0) + seasonBonus;
     const dropped = [...mulliganed].reduce((sum, id) => sum + (p.scores[id] ?? 0), 0);
     const medals = countRowMedals(playerMedals, p.userId);
     return {
@@ -122,7 +127,7 @@ export function buildSeasonRecord(args: {
       teamId: t.teamId,
       name: team.name,
       color: team.color ?? null,
-      total: values.reduce((sum, v) => sum + v, 0),
+      total: values.reduce((sum, v) => sum + v, 0) + (bonus.teams.get(t.teamId) ?? 0),
       racesScored: values.length,
       highScore: values.length > 0 ? Math.max(...values) : null,
       medals,

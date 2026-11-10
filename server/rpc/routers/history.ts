@@ -29,6 +29,8 @@ import { BlobTrophyArtQuery } from "@/server/queries/trophy-art/BlobTrophyArtQue
 import { BlobSetTrophyArtCommand } from "@/server/commands/set-trophy-art/BlobSetTrophyArtCommand";
 import { BlobSetLeaguePrivateCommand } from "@/server/commands/set-league-private/BlobSetLeaguePrivateCommand";
 import { UndoNextSeasonCommand } from "@/server/commands/undo-next-season/UndoNextSeasonCommand";
+import { BlobSeasonPropsRepository } from "@/server/repositories/season-props/BlobSeasonPropsRepository";
+import { BlobSeasonQuestionLibraryRepository } from "@/server/repositories/season-question-library/BlobSeasonQuestionLibraryRepository";
 import { BlobRacePredictionBookRepository } from "@/server/repositories/race-prediction-book/BlobRacePredictionBookRepository";
 
 const leagueRepo = new BlobLeagueRepository();
@@ -40,15 +42,17 @@ const historyRepo = new BlobLeagueHistoryRepository();
 const privacyRepo = new BlobProfilePrivacyRepository();
 const notificationRepo = new BlobNotificationRepository();
 const calendarRepo = new BlobMotorsportCalendarRepository();
+const seasonPropsRepo = new BlobSeasonPropsRepository();
+const seasonQuestionsRepo = new BlobSeasonQuestionLibraryRepository();
 
-const historyQuery = new LeagueHistoryQuery(leagueRepo, raceRepo, standingsRepo, teamRepo, userRepo, historyRepo);
-const shelfQuery = new TrophyShelfQuery(userRepo, leagueRepo, raceRepo, standingsRepo, historyRepo, privacyRepo);
+const historyQuery = new LeagueHistoryQuery(leagueRepo, raceRepo, standingsRepo, teamRepo, userRepo, historyRepo, seasonPropsRepo, seasonQuestionsRepo);
+const shelfQuery = new TrophyShelfQuery(userRepo, leagueRepo, raceRepo, standingsRepo, historyRepo, privacyRepo, seasonPropsRepo, seasonQuestionsRepo);
 const nextSeasonSetupQuery = new NextSeasonSetupQuery(leagueRepo, raceRepo, teamRepo, userRepo, historyRepo, calendarRepo);
 const endSeasonCommand = new EndSeasonCommand(leagueRepo, raceRepo, notificationRepo);
 const bookRepo = new BlobRacePredictionBookRepository();
 const reopenSeasonCommand = new ReopenSeasonCommand(leagueRepo, raceRepo, bookRepo, standingsRepo, teamRepo);
 const startNextSeasonCommand = new StartNextSeasonCommand(
-  leagueRepo, raceRepo, standingsRepo, teamRepo, userRepo, historyRepo, notificationRepo, calendarRepo,
+  leagueRepo, raceRepo, standingsRepo, teamRepo, userRepo, historyRepo, notificationRepo, calendarRepo, seasonPropsRepo, seasonQuestionsRepo,
 );
 const importPastSeasonCommand = new ImportPastSeasonCommand(leagueRepo, historyRepo);
 const deleteHistorySeasonCommand = new BlobDeleteHistorySeasonCommand(historyRepo);

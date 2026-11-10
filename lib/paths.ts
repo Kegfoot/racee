@@ -56,3 +56,13 @@ export function trophyArtImagePath(tier: string) {
 export function motorsportSeasonsPath(motorsportId: string) {
   return `motorsports/${motorsportId}/seasons.json`;
 }
+
+/** The admin-built library of year-long questions for a motorsport (with the correct answers). */
+export function seasonQuestionsPath(motorsportId: string) {
+  return `motorsports/${motorsportId}/season-questions.json`;
+}
+
+/** One league's year-long prop bets for one season: setup, scale and everyone's picks. */
+export function seasonPropsPath(leagueId: string, seasonKey: string) {
+  return `leagues/${leagueId}/season-props/${seasonKey}.json`;
+}

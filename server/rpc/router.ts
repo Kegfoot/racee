@@ -11,6 +11,7 @@ import { resultsRouter } from "@/server/rpc/routers/results";
 import { playerVsPlayerRouter } from "@/server/rpc/routers/player-vs-player";
 import { moderationRouter } from "@/server/rpc/routers/moderation";
 import { historyRouter } from "@/server/rpc/routers/history";
+import { seasonPropsRouter } from "@/server/rpc/routers/season-props";
 
 /**
  * Root oRPC router. Compose additional domain sub-routers here as they're
@@ -30,6 +31,7 @@ export const router = {
   playerVsPlayer: playerVsPlayerRouter,
   moderation: moderationRouter,
   history: historyRouter,
+  seasonProps: seasonPropsRouter,
 };
 
 export type AppRouter = typeof router;

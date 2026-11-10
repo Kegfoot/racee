@@ -5,7 +5,10 @@ import type {
   IRaceRepository,
   ITeamRepository,
   IUserRepository,
+  ISeasonPropsRepository,
+  ISeasonQuestionLibraryRepository,
 } from "@/server/repositories";
+import { loadSeasonBonus } from "@/server/queries/shared/season-bonus";
 import { NotFoundError } from "@/server/domain/errors";
 import { assertLeagueMember, isLeagueCommissioner } from "@/server/roles/league";
 import { buildSeasonRecord, seasonParticipantIds } from "@/server/services/season-record";
@@ -20,6 +23,8 @@ export class LeagueHistoryQuery implements ILeagueHistoryQuery {
     private readonly teams: ITeamRepository,
     private readonly users: IUserRepository,
     private readonly history: ILeagueHistoryRepository,
+    private readonly seasonProps: ISeasonPropsRepository,
+    private readonly seasonQuestions: ISeasonQuestionLibraryRepository,
   ) {}
 
   async execute(input: { actorUserId: string; leagueId: string; asAdmin?: boolean }): Promise<LeagueHistoryResult> {
@@ -41,7 +46,9 @@ export class LeagueHistoryQuery implements ILeagueHistoryQuery {
     const now = new Date().toISOString();
     const label = league.displaySeasonLabel(seasonRaces, now.slice(0, 4));
 
+    const bonus = await loadSeasonBonus({ props: this.seasonProps, libraries: this.seasonQuestions }, league, teams, seasonRaces);
     const current = buildSeasonRecord({
+      bonus,
       seasonId: league.currentSeasonKey,
       label,
       endedAt: league.seasonEndedAt ?? now,
