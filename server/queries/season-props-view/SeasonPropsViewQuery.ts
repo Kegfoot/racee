@@ -79,6 +79,7 @@ export class SeasonPropsViewQuery implements ISeasonPropsViewQuery {
       pointsRevealed: revealed,
       racesLeft,
       seasonEnded,
+      finaleReleased: props.isFinaleReleased(league.seasonEndedAt),
       scale: [...props.scale],
       // Players only see questions once the commissioner has pushed them out.
       questions: canManage || visible ? questions : [],

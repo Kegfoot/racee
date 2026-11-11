@@ -58,6 +58,8 @@ export const SeasonPropsSchema = z.object({
   revealRacesLeft: z.number().int().min(0).max(60).default(3),
   scale: z.array(ScaleStepSchema).max(50).default([]),
   questions: z.array(SeasonQuestionSchema).max(40).default([]),
+  /** When the commissioner released the season finale (the final standings and video). Only counts if it's after the season ended. */
+  finaleReleasedAt: z.string().nullable().default(null),
   /** userId → questionId → answer. */
   picks: z.record(z.string(), z.record(z.string(), z.string())).default({}),
 });
@@ -65,7 +67,7 @@ export type SeasonPropsData = z.infer<typeof SeasonPropsSchema>;
 export type SeasonPropsInput = z.input<typeof SeasonPropsSchema>;
 
 /** The setup a commissioner edits (everything except the picks). */
-export type SeasonPropsSetup = Omit<SeasonPropsInput, "leagueId" | "seasonKey" | "picks">;
+export type SeasonPropsSetup = Omit<SeasonPropsInput, "leagueId" | "seasonKey" | "picks" | "finaleReleasedAt">;
 
 export class SeasonProps {
   private props: SeasonPropsData;
@@ -89,6 +91,7 @@ export class SeasonProps {
   get revealRacesLeft() { return this.props.revealRacesLeft; }
   get scale(): readonly ScaleStep[] { return this.props.scale; }
   get questions(): readonly SeasonQuestion[] { return this.props.questions; }
+  get finaleReleasedAt(): string | null { return this.props.finaleReleasedAt; }
   get picks(): Readonly<Record<string, Readonly<Record<string, string>>>> { return this.props.picks; }
 
   /** Replaces the setup. Picks for questions that were removed are dropped; the rest stay. */
@@ -133,6 +136,23 @@ export class SeasonProps {
       clean[q.questionId] = raw;
     }
     this.props = { ...this.props, picks: { ...this.props.picks, [userId]: clean } };
+  }
+
+  /** Commissioner's call: may this player still make picks after the lock? */
+  setLatePicker(userId: string, allowed: boolean): void {
+    const rest = this.props.latePickUserIds.filter(id => id !== userId);
+    this.props = { ...this.props, latePickUserIds: allowed ? [...rest, userId] : rest };
+  }
+
+  /** Marks the finale as released (the final standings can show). */
+  releaseFinale(at: string): void {
+    this.props = { ...this.props, finaleReleasedAt: at };
+  }
+
+  /** Has the finale been released since the season ended at `seasonEndedAt`? */
+  isFinaleReleased(seasonEndedAt: string | null): boolean {
+    const released = this.props.finaleReleasedAt;
+    return released !== null && seasonEndedAt !== null && released >= seasonEndedAt;
   }
 
   removeUser(userId: string): void {

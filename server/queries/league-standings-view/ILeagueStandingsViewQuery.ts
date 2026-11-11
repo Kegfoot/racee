@@ -25,6 +25,10 @@ export type LeagueStandingsViewResult = {
   stages: string[][];
   driverRows: DriverRowDTO[];
   constructorRows: ConstructorRowDTO[];
+  /** The season has ended but the commissioner hasn't released the finale yet. */
+  finalePending: boolean;
+  /** The rows above were left out for this viewer because of that (commissioners still get them). */
+  finaleHidden: boolean;
   /** True while the league's season-bet points are hidden (not in anyone's total yet). */
   seasonBetsHidden: boolean;
   usersById: Record<string, UserDTO>;

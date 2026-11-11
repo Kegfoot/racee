@@ -47,7 +47,10 @@ export class LeagueHistoryQuery implements ILeagueHistoryQuery {
     const label = league.displaySeasonLabel(seasonRaces, now.slice(0, 4));
 
     const bonus = await loadSeasonBonus({ props: this.seasonProps, libraries: this.seasonQuestions }, league, teams, seasonRaces);
-    const current = buildSeasonRecord({
+    // The ended season's final results stay hidden from players until the finale is released.
+    const finaleProps = await this.seasonProps.find(league.leagueId, league.seasonKey);
+    const hideCurrent = league.isSeasonEnded && !finaleProps?.isFinaleReleased(league.seasonEndedAt) && !canManage;
+    const built = buildSeasonRecord({
       bonus,
       seasonId: league.currentSeasonKey,
       label,
@@ -58,6 +61,7 @@ export class LeagueHistoryQuery implements ILeagueHistoryQuery {
       teams,
       namesById,
     });
+    const current = hideCurrent ? { ...built, players: [], teams: [] } : built;
 
     return {
       leagueId: league.leagueId,

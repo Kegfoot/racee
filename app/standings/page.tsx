@@ -12,6 +12,8 @@ import { useUser } from "@/app/context/UserContext";
 import { useLeague } from "@/app/context/LeagueContext";
 import { orpc } from "@/lib/orpc/client";
 import { StandingsGrid } from "./StandingsGrid";
+import { FinaleLauncher } from "./finale/FinaleLauncher";
+import { FinalePendingSplash } from "./finale/FinalePendingSplash";
 import { mergeReplacedRaceColumns, orderSeasonRaces } from "@/lib/race-order";
 
 export default function ViewPage() {
@@ -51,6 +53,15 @@ export default function ViewPage() {
       ) : leagueQuery.data && teamsQuery.data && standingsQuery.data ? (
         <>
         <SeasonBanner leagueId={activeLeagueId} />
+        {standingsQuery.data.finalePending && !standingsQuery.data.finaleHidden && (
+          <p className="rounded-md border border-primary/40 bg-primary/10 p-3 text-xs text-muted-foreground">
+            Players can&apos;t see the final standings yet. Grade everything, then release the finale from the Season page.
+          </p>
+        )}
+        {user && !standingsQuery.data.finalePending && <FinaleLauncher leagueId={activeLeagueId} userId={user.id} />}
+        {standingsQuery.data.finaleHidden ? (
+          <FinalePendingSplash />
+        ) : (
         <StandingsGrid
           league={leagueQuery.data}
           races={sortedRaces}
@@ -60,6 +71,7 @@ export default function ViewPage() {
           constructorRows={standingsQuery.data.constructorRows}
           stages={standingsQuery.data.stages}
         />
+        )}
         <div className="grid grid-cols-2 gap-2">
           <Button variant="outline" asChild>
             <Link href="/standings/history">

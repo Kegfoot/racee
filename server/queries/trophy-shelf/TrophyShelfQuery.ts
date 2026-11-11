@@ -82,7 +82,11 @@ export class TrophyShelfQuery implements ITrophyShelfQuery {
           return row ? [toSeason(s.seasonId, s.label, "complete", row)] : [];
         });
 
-        if (league.showsInStandings(input.userId) || league.commissionerId === input.userId) {
+        // The ended season's trophies stay secret until the commissioner releases the finale.
+        const finaleProps = league.isSeasonEnded ? await this.seasonProps.find(league.leagueId, league.seasonKey) : null;
+        const finaleWaiting = league.isSeasonEnded && !finaleProps?.isFinaleReleased(league.seasonEndedAt);
+
+        if (!finaleWaiting && (league.showsInStandings(input.userId) || league.commissionerId === input.userId)) {
           const seasonRaces = league.currentSeasonRaces(allRaces);
           const bonus = await loadSeasonBonus({ props: this.seasonProps, libraries: this.seasonQuestions }, league, [], seasonRaces);
           const current = buildSeasonRecord({

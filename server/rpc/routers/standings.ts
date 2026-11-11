@@ -42,6 +42,8 @@ const StandingsViewSchema = z.object({
   stages: z.array(z.array(z.string().uuid())),
   driverRows: z.array(DriverRowSchema),
   constructorRows: z.array(ConstructorRowSchema),
+  finalePending: z.boolean(),
+  finaleHidden: z.boolean(),
   seasonBetsHidden: z.boolean(),
   usersById: z.record(z.string(), UserSchema),
 });

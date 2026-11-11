@@ -135,11 +135,19 @@ export class LeagueStandingsViewQuery implements ILeagueStandingsViewQuery {
       .filter(t => !listedTeamIds.has(t.teamId))
       .map(t => ({ teamId: t.teamId, total: bonus.teams.get(t.teamId) ?? 0, seasonBonus: bonus.teams.get(t.teamId) ?? 0, rawTotal: 0, propTotal: 0, raceScores: [] }));
 
+    // Once the season has ended, the final standings stay hidden from players until the
+    // commissioner releases the finale. Commissioners still see them (to finish grading).
+    const seasonProps = await this.seasonProps.find(league.leagueId, league.seasonKey);
+    const finalePending = league.isSeasonEnded && !seasonProps?.isFinaleReleased(league.seasonEndedAt);
+    const hideFromViewer = finalePending && !league.canManage(actorUserId);
+
     return {
       gradedRaceIds: sortedRaces.filter(r => r.keySetAt !== null).map(r => r.raceId),
-      stages,
-      driverRows: [...driverRows, ...previewDriverRows],
-      constructorRows: [...constructorRows, ...previewConstructorRows],
+      stages: hideFromViewer ? [] : stages,
+      driverRows: hideFromViewer ? [] : [...driverRows, ...previewDriverRows],
+      constructorRows: hideFromViewer ? [] : [...constructorRows, ...previewConstructorRows],
+      finalePending,
+      finaleHidden: hideFromViewer,
       seasonBetsHidden: !bonus.revealed,
       usersById: Object.fromEntries(userList.map(u => [u.userId, { id: u.userId, name: u.name }])),
     };

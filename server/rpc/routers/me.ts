@@ -103,7 +103,7 @@ export const meRouter = {
           notifications: z.array(
             z.object({
               id: z.string(),
-              kind: z.enum(["photo_removed", "season_ended", "season_started"]),
+              kind: z.enum(["photo_removed", "season_ended", "season_started", "season_finale"]),
               title: z.string(),
               body: z.string(),
               createdAt: z.string(),

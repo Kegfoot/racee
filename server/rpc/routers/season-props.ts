@@ -2,6 +2,13 @@ import { z } from "zod";
 import { adminOnly, authed } from "@/server/rpc/procedures";
 import { QuestionKindSchema, ScaleStepSchema, SeasonQuestionSchema } from "@/server/domain/season-props";
 import { LibraryQuestionSchema } from "@/server/domain/season-question-library";
+import { BlobTeamRepository } from "@/server/repositories/team/BlobTeamRepository";
+import { BlobLeagueStandingsRepository } from "@/server/repositories/league-standings/BlobLeagueStandingsRepository";
+import { BlobRacePredictionBookRepository } from "@/server/repositories/race-prediction-book/BlobRacePredictionBookRepository";
+import { BlobNotificationRepository } from "@/server/repositories/notification/BlobNotificationRepository";
+import { LeagueFinaleQuery } from "@/server/queries/league-finale/LeagueFinaleQuery";
+import { ReleaseFinaleCommand } from "@/server/commands/release-finale/ReleaseFinaleCommand";
+import { SetLateSeasonPickerCommand } from "@/server/commands/set-late-season-picker/SetLateSeasonPickerCommand";
 import { BlobLeagueRepository } from "@/server/repositories/league/BlobLeagueRepository";
 import { BlobRaceRepository } from "@/server/repositories/race/BlobRaceRepository";
 import { BlobRacerRepository } from "@/server/repositories/racer/BlobRacerRepository";
@@ -19,7 +26,15 @@ const propsRepo = new BlobSeasonPropsRepository();
 const libraryRepo = new BlobSeasonQuestionLibraryRepository();
 const racerRepo = new BlobRacerRepository();
 
-const viewQuery = new SeasonPropsViewQuery(leagueRepo, propsRepo, libraryRepo, racerRepo, new BlobRaceRepository(), new PrismaUserRepository());
+const raceRepo = new BlobRaceRepository();
+const userRepo = new PrismaUserRepository();
+const viewQuery = new SeasonPropsViewQuery(leagueRepo, propsRepo, libraryRepo, racerRepo, raceRepo, userRepo);
+const finaleQuery = new LeagueFinaleQuery(
+  leagueRepo, raceRepo, new BlobLeagueStandingsRepository(), new BlobTeamRepository(), userRepo,
+  new BlobRacePredictionBookRepository(), propsRepo, libraryRepo,
+);
+const releaseFinaleCommand = new ReleaseFinaleCommand(leagueRepo, propsRepo, libraryRepo, new BlobNotificationRepository());
+const lateSeasonPickerCommand = new SetLateSeasonPickerCommand(leagueRepo, propsRepo);
 const libraryQuery = new SeasonQuestionLibraryQuery(libraryRepo, racerRepo);
 const saveCommand = new SaveSeasonPropsCommand(leagueRepo, propsRepo);
 const submitCommand = new SubmitSeasonPicksCommand(leagueRepo, propsRepo);
@@ -53,6 +68,7 @@ const ViewSchema = z.object({
   pointsRevealed: z.boolean(),
   racesLeft: z.number(),
   seasonEnded: z.boolean(),
+  finaleReleased: z.boolean(),
   scale: z.array(ScaleStepSchema),
   questions: z.array(QuestionDTOSchema),
   latePickUserIds: z.array(z.string()),
@@ -63,6 +79,43 @@ const ViewSchema = z.object({
     .nullable(),
   library: z.array(LibraryQuestionSchema),
   members: z.array(z.object({ userId: z.string(), name: z.string() })),
+});
+
+const FinaleRowSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  total: z.number(),
+  rank: z.number(),
+  color: z.string(),
+  subtitle: z.string(),
+});
+const FinaleMedalRowSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  color: z.string(),
+  gold: z.number(),
+  silver: z.number(),
+  bronze: z.number(),
+});
+const FinaleSchema = z.object({
+  state: z.enum(["none", "pending", "released", "preview"]),
+  leagueId: z.string(),
+  leagueName: z.string(),
+  seasonLabel: z.string(),
+  seasonKey: z.string(),
+  drivers: z.array(FinaleRowSchema),
+  teams: z.array(FinaleRowSchema),
+  teamLogos: z.array(z.object({ id: z.string(), name: z.string(), color: z.string().nullable(), logo: z.string().nullable() })),
+  medals: z.object({ players: z.array(FinaleMedalRowSchema), teams: z.array(FinaleMedalRowSchema) }),
+  awards: z.array(
+    z.object({
+      id: z.enum(["highScore", "consistent", "propWizard", "traveler", "hotStreak"]),
+      title: z.string(),
+      blurb: z.string(),
+      winners: z.array(z.object({ id: z.string(), name: z.string(), value: z.string() })),
+    }),
+  ),
+  viewerTeamId: z.string().nullable(),
 });
 
 const SetupSchema = z.object({
@@ -101,6 +154,42 @@ export const seasonPropsRouter = {
       await submitCommand.execute({ actorUserId: context.session.user.id, leagueId: input.leagueId, picks: input.picks });
       return { ok: true as const };
     }),
+
+  /** Commissioner: may this player still make season picks after the lock? */
+  allowLatePicker: authed
+    .input(z.object({ leagueId: z.string().uuid(), userId: z.string(), allowed: z.boolean() }))
+    .output(z.object({ ok: z.literal(true) }))
+    .handler(async ({ context, input }) => {
+      await lateSeasonPickerCommand.execute({ actorUserId: context.session.user.id, ...input });
+      return { ok: true as const };
+    }),
+
+  /** Commissioner: releases the season finale (needs every season question answered). */
+  releaseFinale: authed
+    .input(z.object({ leagueId: z.string().uuid() }))
+    .output(z.object({ ok: z.literal(true) }))
+    .handler(async ({ context, input }) => {
+      await releaseFinaleCommand.execute({ actorUserId: context.session.user.id, leagueId: input.leagueId });
+      return { ok: true as const };
+    }),
+
+  finale: {
+    /** The season finale: players get it once released; commissioners can preview it any time. */
+    get: authed
+      .input(z.object({ leagueId: z.string().uuid(), preview: z.boolean().optional() }))
+      .output(FinaleSchema)
+      .handler(async ({ context, input }) =>
+        finaleQuery.execute({ actorUserId: context.session.user.id, leagueId: input.leagueId, preview: input.preview }),
+      ),
+
+    /** Admin: watch the finale for any league's current standings. */
+    adminPreview: adminOnly
+      .input(z.object({ leagueId: z.string().uuid() }))
+      .output(FinaleSchema)
+      .handler(async ({ context, input }) =>
+        finaleQuery.execute({ actorUserId: context.session.user.id, leagueId: input.leagueId, preview: true, asAdmin: true }),
+      ),
+  },
 
   library: {
     /** Admin: the question library (with correct answers) and the grid names. */

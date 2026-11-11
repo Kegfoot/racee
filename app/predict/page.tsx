@@ -141,13 +141,22 @@ export default function PredictPage() {
           <PredictPagePlaceholder />
         ) : (
           <div className="space-y-5">
-            {seasonBetsOpen && (
-              <Button asChild variant="outline" size="sm">
-                <Link href="/predict/season">
-                  Season picks
-                  {seasonBets?.canPick && " (open)"}
-                </Link>
-              </Button>
+            {seasonBetsOpen && seasonBets?.canPick && Object.keys(seasonBets.myPicks).length < seasonBets.questions.length ? (
+              <Link
+                href="/predict/season"
+                className="block rounded-lg border border-primary/50 bg-primary/10 p-4 transition-colors hover:bg-primary/15"
+              >
+                <p className="text-xs font-semibold uppercase tracking-widest text-primary">Make your season picks first</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Your league is playing year-long bets. Lock in your answers before the races.
+                </p>
+              </Link>
+            ) : (
+              seasonBetsOpen && (
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/predict/season">Season picks{seasonBets?.canPick && " (open)"}</Link>
+                </Button>
+              )
             )}
 
             <RaceSelector

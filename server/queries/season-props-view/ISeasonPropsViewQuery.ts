@@ -29,6 +29,8 @@ export type SeasonPropsViewResult = {
   pointsRevealed: boolean;
   racesLeft: number;
   seasonEnded: boolean;
+  /** The commissioner has released the season finale. */
+  finaleReleased: boolean;
   scale: ScaleStep[];
   questions: SeasonPropsQuestionDTO[];
   latePickUserIds: string[];

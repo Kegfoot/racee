@@ -1,10 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardContent, CardAction } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { orpc } from "@/lib/orpc/client";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { PendingSection } from "./PendingSection";
 import { MembersSection } from "./MembersSection";
 
@@ -23,8 +34,24 @@ export function PlayersList({ leagueId }: PlayersListProps) {
     queryClient.invalidateQueries({ queryKey: orpc.leagues.players.list.key({ input }) });
     queryClient.invalidateQueries({ queryKey: orpc.leagues.avatars.list.key({ input }) });
   };
+  const seasonBets = useQuery(orpc.seasonProps.get.queryOptions({ input })).data;
+  const [latePick, setLatePick] = useState<{ userId: string; name: string } | null>(null);
+  const allowLate = useMutation(
+    orpc.seasonProps.allowLatePicker.mutationOptions({
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: orpc.seasonProps.key() }),
+    }),
+  );
   const acceptMutation = useMutation(
-    orpc.leagues.players.accept.mutationOptions({ onSuccess: invalidatePlayers }),
+    orpc.leagues.players.accept.mutationOptions({
+      onSuccess: (_data, variables) => {
+        invalidatePlayers();
+        // Season bets are already locked: the commissioner decides if the newcomer may still pick.
+        if (seasonBets?.enabled && seasonBets.open && seasonBets.locked) {
+          const name = playersQuery.data?.pending.find((p) => p.id === variables.userId)?.name ?? "this player";
+          setLatePick({ userId: variables.userId, name });
+        }
+      },
+    }),
   );
   const denyMutation = useMutation(
     orpc.leagues.players.deny.mutationOptions({ onSuccess: invalidatePlayers }),
@@ -107,6 +134,24 @@ export function PlayersList({ leagueId }: PlayersListProps) {
           </CardContent>
         </Card>
       )}
+      <AlertDialog open={!!latePick} onOpenChange={(o) => !o && setLatePick(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Let {latePick?.name} make season picks?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Season bets are already locked. You can let {latePick?.name} pick anyway now that they&apos;re joining mid-season.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No, skip bets</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => latePick && allowLate.mutate({ leagueId, userId: latePick.userId, allowed: true })}
+            >
+              Yes, let them pick
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

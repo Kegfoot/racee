@@ -35,7 +35,7 @@ export class EndSeasonCommand implements IEndSeasonCommand {
         id: crypto.randomUUID(),
         kind: "season_ended",
         title: `${league.name}: ${label} season is over`,
-        body: "Final standings are locked in and trophies have been handed out. Check the standings to see who took home the hardware.",
+        body: "The season is wrapped up. Your commissioner will release the finale once everything is graded, and then you can watch who took home the hardware.",
         createdAt: now,
         read: false,
       });

@@ -25,6 +25,7 @@ import { orpc } from "@/lib/orpc/client";
 import { medalForRank } from "@/lib/medals";
 import { formatPoints } from "@/lib/utils";
 import { TrophyIcon } from "@/components/trophies/AwardIcons";
+import { FinaleCard } from "./FinaleCard";
 
 function errorMessage(e: unknown, fallback: string): string {
   return e instanceof Error && e.message ? e.message : fallback;
@@ -140,6 +141,8 @@ export default function CommissionerSeasonPage() {
               )}
             </CardContent>
           </Card>
+
+          <FinaleCard leagueId={leagueId} ended={data.current.ended} unscoredRaces={data.current.unscoredRaces} onError={setError} />
 
           {data.current.undoSeasonLabel && (
             <Card>
