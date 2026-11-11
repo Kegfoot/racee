@@ -45,8 +45,8 @@ const calendarRepo = new BlobMotorsportCalendarRepository();
 const seasonPropsRepo = new BlobSeasonPropsRepository();
 const seasonQuestionsRepo = new BlobSeasonQuestionLibraryRepository();
 
-const historyQuery = new LeagueHistoryQuery(leagueRepo, raceRepo, standingsRepo, teamRepo, userRepo, historyRepo, seasonPropsRepo, seasonQuestionsRepo);
-const shelfQuery = new TrophyShelfQuery(userRepo, leagueRepo, raceRepo, standingsRepo, historyRepo, privacyRepo, seasonPropsRepo, seasonQuestionsRepo);
+const historyQuery = new LeagueHistoryQuery(leagueRepo, raceRepo, standingsRepo, teamRepo, userRepo, historyRepo, seasonPropsRepo, seasonQuestionsRepo, calendarRepo);
+const shelfQuery = new TrophyShelfQuery(userRepo, leagueRepo, raceRepo, standingsRepo, historyRepo, privacyRepo, seasonPropsRepo, seasonQuestionsRepo, calendarRepo);
 const nextSeasonSetupQuery = new NextSeasonSetupQuery(leagueRepo, raceRepo, teamRepo, userRepo, historyRepo, calendarRepo);
 const endSeasonCommand = new EndSeasonCommand(leagueRepo, raceRepo, notificationRepo);
 const bookRepo = new BlobRacePredictionBookRepository();

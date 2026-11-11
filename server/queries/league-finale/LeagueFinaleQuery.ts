@@ -2,17 +2,19 @@ import type {
   ILeagueRepository,
   ILeagueStandingsRepository,
   IRacePredictionBookRepository,
+  IMotorsportCalendarRepository,
   IRaceRepository,
   ISeasonPropsRepository,
   ISeasonQuestionLibraryRepository,
   ITeamRepository,
   IUserRepository,
 } from "@/server/repositories";
-import { AuthorizationError, NotFoundError } from "@/server/domain/errors";
-import { assertLeagueMember, isLeagueCommissioner } from "@/server/roles/league";
+import { NotFoundError } from "@/server/domain/errors";
+import { assertLeagueMember } from "@/server/roles/league";
 import { buildSeasonRecord, seasonParticipantIds } from "@/server/services/season-record";
 import { computeFinaleAwards, type PropAccuracy } from "@/server/services/season-finale";
 import { loadSeasonBonus } from "@/server/queries/shared/season-bonus";
+import { loadFinaleGate } from "@/server/queries/shared/finale-gate";
 import type { FinaleMedalRow, FinaleStandingRow, ILeagueFinaleQuery, LeagueFinaleResult } from "./ILeagueFinaleQuery";
 
 const PROP_NAMES = ["driverOfDay", "lapsLed", "fastestPitStop", "fastestLap", "overAchiever", "underAchiever", "wrecker"] as const;
@@ -34,18 +36,18 @@ export class LeagueFinaleQuery implements ILeagueFinaleQuery {
     private readonly books: IRacePredictionBookRepository,
     private readonly seasonProps: ISeasonPropsRepository,
     private readonly seasonQuestions: ISeasonQuestionLibraryRepository,
+    private readonly calendars: IMotorsportCalendarRepository,
   ) {}
 
   async execute(input: { actorUserId: string; leagueId: string; preview?: boolean; asAdmin?: boolean }): Promise<LeagueFinaleResult> {
     const league = await this.leagues.findById(input.leagueId);
     if (!league) throw new NotFoundError("League", input.leagueId);
     if (!input.asAdmin) assertLeagueMember(input.actorUserId, league);
-    if (input.preview && !input.asAdmin && !isLeagueCommissioner(input.actorUserId, league)) {
-      throw new AuthorizationError("Only commissioners can preview the finale");
-    }
 
-    const props = await this.seasonProps.find(league.leagueId, league.seasonKey);
-    const released = !!props?.isFinaleReleased(league.seasonEndedAt);
+    // Only site admins can watch the finale early (for any league); everyone else waits for both releases.
+    const preview = !!input.preview && !!input.asAdmin;
+    const gateRaces = league.currentSeasonRaces(await this.races.findAllForMotorsport(league.motorsportId));
+    const gate = await loadFinaleGate({ props: this.seasonProps, calendars: this.calendars }, league, gateRaces);
     const base = {
       leagueId: league.leagueId,
       leagueName: league.name,
@@ -59,7 +61,7 @@ export class LeagueFinaleQuery implements ILeagueFinaleQuery {
     };
     const now = new Date().toISOString();
 
-    const state = input.preview ? "preview" : !league.isSeasonEnded ? "none" : released ? "released" : "pending";
+    const state = preview ? "preview" : gate.phase;
     if (state === "none" || state === "pending") {
       const allRaces = await this.races.findAllForMotorsport(league.motorsportId);
       return { ...base, state, seasonLabel: league.displaySeasonLabel(league.currentSeasonRaces(allRaces), now.slice(0, 4)) };

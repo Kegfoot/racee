@@ -8,6 +8,7 @@ import { PrismaUserRepository } from "@/server/repositories/user/PrismaUserRepos
 import { BlobTeamRepository } from "@/server/repositories/team/BlobTeamRepository";
 import { BlobSeasonPropsRepository } from "@/server/repositories/season-props/BlobSeasonPropsRepository";
 import { BlobSeasonQuestionLibraryRepository } from "@/server/repositories/season-question-library/BlobSeasonQuestionLibraryRepository";
+import { BlobMotorsportCalendarRepository } from "@/server/repositories/motorsport-calendar/BlobMotorsportCalendarRepository";
 import { LeagueStandingsViewQuery } from "@/server/queries/league-standings-view/LeagueStandingsViewQuery";
 
 const standingsViewQuery = new LeagueStandingsViewQuery(
@@ -18,6 +19,7 @@ const standingsViewQuery = new LeagueStandingsViewQuery(
   new BlobTeamRepository(),
   new BlobSeasonPropsRepository(),
   new BlobSeasonQuestionLibraryRepository(),
+  new BlobMotorsportCalendarRepository(),
 );
 
 const DriverRowSchema = z.object({

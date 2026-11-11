@@ -7,8 +7,10 @@ import type {
   IUserRepository,
   ISeasonPropsRepository,
   ISeasonQuestionLibraryRepository,
+  IMotorsportCalendarRepository,
 } from "@/server/repositories";
 import { loadSeasonBonus } from "@/server/queries/shared/season-bonus";
+import { loadFinaleGate } from "@/server/queries/shared/finale-gate";
 import { NotFoundError } from "@/server/domain/errors";
 import { assertLeagueMember, isLeagueCommissioner } from "@/server/roles/league";
 import { buildSeasonRecord, seasonParticipantIds } from "@/server/services/season-record";
@@ -25,6 +27,7 @@ export class LeagueHistoryQuery implements ILeagueHistoryQuery {
     private readonly history: ILeagueHistoryRepository,
     private readonly seasonProps: ISeasonPropsRepository,
     private readonly seasonQuestions: ISeasonQuestionLibraryRepository,
+    private readonly calendars: IMotorsportCalendarRepository,
   ) {}
 
   async execute(input: { actorUserId: string; leagueId: string; asAdmin?: boolean }): Promise<LeagueHistoryResult> {
@@ -47,9 +50,9 @@ export class LeagueHistoryQuery implements ILeagueHistoryQuery {
     const label = league.displaySeasonLabel(seasonRaces, now.slice(0, 4));
 
     const bonus = await loadSeasonBonus({ props: this.seasonProps, libraries: this.seasonQuestions }, league, teams, seasonRaces);
-    // The ended season's final results stay hidden from players until the finale is released.
-    const finaleProps = await this.seasonProps.find(league.leagueId, league.seasonKey);
-    const hideCurrent = league.isSeasonEnded && !finaleProps?.isFinaleReleased(league.seasonEndedAt) && !canManage;
+    // The final results stay hidden from players until the admins and the commissioner release the finale.
+    const gate = await loadFinaleGate({ props: this.seasonProps, calendars: this.calendars }, league, seasonRaces);
+    const hideCurrent = gate.phase === "pending" && !canManage && !input.asAdmin;
     const built = buildSeasonRecord({
       bonus,
       seasonId: league.currentSeasonKey,

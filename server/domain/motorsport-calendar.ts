@@ -17,6 +17,8 @@ export const MotorsportSeasonSchema = z.object({
   startDate: z.string().regex(DAY),
   /** Last day of the season, YYYY-MM-DD (inclusive). */
   endDate: z.string().regex(DAY),
+  /** When the admins released this season's finale (their half of the two-key release). Null = not yet. */
+  finaleReleasedAt: z.string().nullable().default(null),
 });
 export type MotorsportSeason = z.infer<typeof MotorsportSeasonSchema>;
 
@@ -77,7 +79,9 @@ export class MotorsportCalendar {
 
   /** Adds or updates a season. Seasons can't overlap, and the end can't come before the start. */
   upsert(season: z.input<typeof MotorsportSeasonSchema>): MotorsportSeason {
-    const parsed = MotorsportSeasonSchema.parse(season);
+    // Editing a season's name or dates never un-releases its finale.
+    const existing = this.find(String(season.seasonId));
+    const parsed = MotorsportSeasonSchema.parse({ ...season, finaleReleasedAt: season.finaleReleasedAt ?? existing?.finaleReleasedAt ?? null });
     if (parsed.endDate < parsed.startDate) throw new InvariantViolationError("The season has to end after it starts");
     const others = this._seasons.filter(s => s.seasonId !== parsed.seasonId);
     const clash = others.find(s => s.startDate <= parsed.endDate && parsed.startDate <= s.endDate);
@@ -87,6 +91,13 @@ export class MotorsportCalendar {
     }
     this._seasons = [...others, parsed];
     return parsed;
+  }
+
+  /** Admins' half of the finale release: opens it up in every league racing this season (once commissioners release too). */
+  setFinaleReleased(seasonId: string, at: string | null): void {
+    const season = this.find(seasonId);
+    if (!season) throw new InvariantViolationError("That season doesn't exist");
+    this._seasons = this._seasons.map(s => (s.seasonId === seasonId ? { ...s, finaleReleasedAt: at } : s));
   }
 
   remove(seasonId: string): void {

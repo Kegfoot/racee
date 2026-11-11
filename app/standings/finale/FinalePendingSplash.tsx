@@ -8,7 +8,7 @@ export function FinalePendingSplash() {
       <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">Final results</p>
       <h2 className="text-3xl font-bold uppercase tracking-wide">Pending</h2>
       <p className="max-w-xs text-sm text-muted-foreground">
-        Your commissioner is finishing the grading. The finale unlocks the moment they release it.
+        The last race has started. Once the admins and your commissioner finish grading, the finale unlocks and the final standings are revealed.
       </p>
     </div>
   );

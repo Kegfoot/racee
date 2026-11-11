@@ -55,7 +55,7 @@ export default function ViewPage() {
         <SeasonBanner leagueId={activeLeagueId} />
         {standingsQuery.data.finalePending && !standingsQuery.data.finaleHidden && (
           <p className="rounded-md border border-primary/40 bg-primary/10 p-3 text-xs text-muted-foreground">
-            Players can&apos;t see the final standings yet. Grade everything, then release the finale from the Season page.
+            Players can&apos;t see the final standings yet. Grade everything, then release the finale from the Season page. It opens once the admins release too.
           </p>
         )}
         {user && !standingsQuery.data.finalePending && <FinaleLauncher leagueId={activeLeagueId} userId={user.id} />}

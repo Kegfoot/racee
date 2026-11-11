@@ -1,12 +1,14 @@
 import type {
   ILeagueRepository,
   IRacerRepository,
+  IMotorsportCalendarRepository,
   IRaceRepository,
   ISeasonPropsRepository,
   ISeasonQuestionLibraryRepository,
   IUserRepository,
 } from "@/server/repositories";
 import { NotFoundError } from "@/server/domain/errors";
+import { loadFinaleGate } from "@/server/queries/shared/finale-gate";
 import { SeasonProps } from "@/server/domain/season-props";
 import { assertLeagueMember, isLeagueCommissioner } from "@/server/roles/league";
 import { gradeSeasonProps, picksRevealed, pointsRevealed, resolveAnswer } from "@/server/services/season-props";
@@ -26,6 +28,7 @@ export class SeasonPropsViewQuery implements ISeasonPropsViewQuery {
     private readonly racers: IRacerRepository,
     private readonly races: IRaceRepository,
     private readonly users: IUserRepository,
+    private readonly calendars: IMotorsportCalendarRepository,
   ) {}
 
   async execute(actorUserId: string, leagueId: string): Promise<SeasonPropsViewResult> {
@@ -41,6 +44,7 @@ export class SeasonPropsViewQuery implements ISeasonPropsViewQuery {
       this.races.findAllForMotorsport(league.motorsportId).then((all) => league.currentSeasonRaces(all)),
     ]);
     const props = stored ?? SeasonProps.empty(league.leagueId, league.seasonKey);
+    const gate = await loadFinaleGate({ props: this.props, calendars: this.calendars }, league, races);
     const today = new Date().toISOString().slice(0, 10);
     const seasonEnded = league.isSeasonEnded;
     const racesLeft = races.filter((r) => r.keySetAt === null && !r.cancelled).length;
@@ -79,7 +83,9 @@ export class SeasonPropsViewQuery implements ISeasonPropsViewQuery {
       pointsRevealed: revealed,
       racesLeft,
       seasonEnded,
-      finaleReleased: props.isFinaleReleased(league.seasonEndedAt),
+      finaleReleased: gate.commissionerReleased,
+      finaleAdminReleased: gate.adminReleased,
+      lastRaceStarted: gate.lastRaceStarted,
       scale: [...props.scale],
       // Players only see questions once the commissioner has pushed them out.
       questions: canManage || visible ? questions : [],

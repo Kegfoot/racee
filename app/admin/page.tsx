@@ -19,10 +19,10 @@ const CARDS = [
     description: "Set each season's start and end dates, and set up next season ahead of time.",
   },
   {
-    href: "/admin/finale-preview",
+    href: "/admin/finale",
     icon: ClapperboardIcon,
-    title: "Finale preview",
-    description: "Pick a league and watch its season finale with the current standings.",
+    title: "Season finale",
+    description: "Release the finale for all leagues once grading is done, or preview any league's.",
   },
   {
     href: "/admin/season-questions",

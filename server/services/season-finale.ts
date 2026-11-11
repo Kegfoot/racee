@@ -8,7 +8,7 @@ import type { SeasonRecord } from "@/server/domain/league-history";
 export type FinaleAwardWinner = { id: string; name: string; value: string };
 
 export type FinaleAward = {
-  id: "highScore" | "consistent" | "propWizard" | "traveler" | "hotStreak";
+  id: "highScore" | "mostMedals" | "highestAverage" | "consistent" | "propWizard" | "traveler" | "hotStreak";
   title: string;
   blurb: string;
   winners: FinaleAwardWinner[];
@@ -78,6 +78,52 @@ export function mostConsistent(record: SeasonRecord): FinaleAward | null {
     title: "Most Consistent",
     blurb: "The smallest swing between their best and worst weeks",
     winners: winners.slice(0, MAX_WINNERS).map((r) => ({ id: r.p.userId, name: r.p.name, value: `averaged ${fmt(r.mean)} pts, only ±${fmt(r.sd)}` })),
+  };
+}
+
+/** Most medals: the most race podiums (gold, silver and bronze together), golds breaking ties. */
+export function mostMedals(record: SeasonRecord): FinaleAward | null {
+  const rows = withUserId(record.players).map((p) => ({ p, total: p.medals.gold + p.medals.silver + p.medals.bronze }));
+  const best = Math.max(0, ...rows.map((r) => r.total));
+  if (best === 0) return null;
+  const top = rows.filter((r) => r.total === best);
+  const mostGold = Math.max(...top.map((r) => r.p.medals.gold));
+  return {
+    id: "mostMedals",
+    title: "Most Medals",
+    blurb: "The most race podiums of the season",
+    winners: top
+      .filter((r) => r.p.medals.gold === mostGold)
+      .slice(0, MAX_WINNERS)
+      .map((r) => ({
+        id: r.p.userId,
+        name: r.p.name,
+        value: `${best} medal${best === 1 ? "" : "s"} · ${r.p.medals.gold} gold`,
+      })),
+  };
+}
+
+/** Highest average: the best points per race (players who scored most of the season only). */
+export function highestAverage(record: SeasonRecord): FinaleAward | null {
+  const players = withUserId(record.players);
+  const mostRaces = Math.max(0, ...players.map((p) => Object.keys(p.raceScores).length));
+  const minRaces = Math.max(3, Math.ceil(mostRaces * 0.6));
+  const rows = players
+    .filter((p) => Object.keys(p.raceScores).length >= minRaces)
+    .map((p) => {
+      const values = Object.values(p.raceScores);
+      return { p, mean: values.reduce((a, b) => a + b, 0) / values.length };
+    });
+  if (rows.length === 0) return null;
+  const best = Math.max(...rows.map((r) => r.mean));
+  return {
+    id: "highestAverage",
+    title: "Highest Average",
+    blurb: "The most points per race, week in and week out",
+    winners: rows
+      .filter((r) => Math.abs(r.mean - best) < 1e-9)
+      .slice(0, MAX_WINNERS)
+      .map((r) => ({ id: r.p.userId, name: r.p.name, value: `${fmt(r.mean)} pts per race` })),
   };
 }
 
@@ -158,7 +204,7 @@ export function hotStreak(record: SeasonRecord): FinaleAward | null {
 }
 
 export function computeFinaleAwards(record: SeasonRecord, accuracy: ReadonlyMap<string, PropAccuracy>): FinaleAward[] {
-  return [highestScoredRace(record), mostConsistent(record), propWizard(record, accuracy), traveler(record), hotStreak(record)].filter(
+  return [highestScoredRace(record), mostMedals(record), highestAverage(record), mostConsistent(record), propWizard(record, accuracy), traveler(record), hotStreak(record)].filter(
     (a): a is FinaleAward => a !== null,
   );
 }

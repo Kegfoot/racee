@@ -7,8 +7,10 @@ import type {
   IUserRepository,
   ISeasonPropsRepository,
   ISeasonQuestionLibraryRepository,
+  IMotorsportCalendarRepository,
 } from "@/server/repositories";
 import { loadSeasonBonus } from "@/server/queries/shared/season-bonus";
+import { loadFinaleGate } from "@/server/queries/shared/finale-gate";
 import { NotFoundError } from "@/server/domain/errors";
 import { trophyKey } from "@/server/domain/profile-privacy";
 import type { SeasonPlayerRecord } from "@/server/domain/league-history";
@@ -33,6 +35,7 @@ export class TrophyShelfQuery implements ITrophyShelfQuery {
     private readonly privacy: IProfilePrivacyRepository,
     private readonly seasonProps: ISeasonPropsRepository,
     private readonly seasonQuestions: ISeasonQuestionLibraryRepository,
+    private readonly calendars: IMotorsportCalendarRepository,
   ) {}
 
   async execute(input: { viewerId: string; userId: string }): Promise<TrophyShelfResult> {
@@ -82,9 +85,13 @@ export class TrophyShelfQuery implements ITrophyShelfQuery {
           return row ? [toSeason(s.seasonId, s.label, "complete", row)] : [];
         });
 
-        // The ended season's trophies stay secret until the commissioner releases the finale.
-        const finaleProps = league.isSeasonEnded ? await this.seasonProps.find(league.leagueId, league.seasonKey) : null;
-        const finaleWaiting = league.isSeasonEnded && !finaleProps?.isFinaleReleased(league.seasonEndedAt);
+        // This season's results stay secret until the admins and the commissioner release the finale.
+        const gate = await loadFinaleGate(
+          { props: this.seasonProps, calendars: this.calendars },
+          league,
+          league.currentSeasonRaces(allRaces),
+        );
+        const finaleWaiting = gate.phase === "pending";
 
         if (!finaleWaiting && (league.showsInStandings(input.userId) || league.commissionerId === input.userId)) {
           const seasonRaces = league.currentSeasonRaces(allRaces);

@@ -10,6 +10,9 @@ import { LeagueFinaleQuery } from "@/server/queries/league-finale/LeagueFinaleQu
 import { ReleaseFinaleCommand } from "@/server/commands/release-finale/ReleaseFinaleCommand";
 import { SetLateSeasonPickerCommand } from "@/server/commands/set-late-season-picker/SetLateSeasonPickerCommand";
 import { BlobLeagueRepository } from "@/server/repositories/league/BlobLeagueRepository";
+import { BlobMotorsportCalendarRepository } from "@/server/repositories/motorsport-calendar/BlobMotorsportCalendarRepository";
+import { AdminReleaseFinaleCommand } from "@/server/commands/admin-release-finale/AdminReleaseFinaleCommand";
+import { AdminFinaleOverviewQuery } from "@/server/queries/admin-finale-overview/AdminFinaleOverviewQuery";
 import { BlobRaceRepository } from "@/server/repositories/race/BlobRaceRepository";
 import { BlobRacerRepository } from "@/server/repositories/racer/BlobRacerRepository";
 import { PrismaUserRepository } from "@/server/repositories/user/PrismaUserRepository";
@@ -28,12 +31,16 @@ const racerRepo = new BlobRacerRepository();
 
 const raceRepo = new BlobRaceRepository();
 const userRepo = new PrismaUserRepository();
-const viewQuery = new SeasonPropsViewQuery(leagueRepo, propsRepo, libraryRepo, racerRepo, raceRepo, userRepo);
+const calendarRepo = new BlobMotorsportCalendarRepository();
+const notificationRepo = new BlobNotificationRepository();
+const viewQuery = new SeasonPropsViewQuery(leagueRepo, propsRepo, libraryRepo, racerRepo, raceRepo, userRepo, calendarRepo);
 const finaleQuery = new LeagueFinaleQuery(
   leagueRepo, raceRepo, new BlobLeagueStandingsRepository(), new BlobTeamRepository(), userRepo,
-  new BlobRacePredictionBookRepository(), propsRepo, libraryRepo,
+  new BlobRacePredictionBookRepository(), propsRepo, libraryRepo, calendarRepo,
 );
-const releaseFinaleCommand = new ReleaseFinaleCommand(leagueRepo, propsRepo, libraryRepo, new BlobNotificationRepository());
+const releaseFinaleCommand = new ReleaseFinaleCommand(leagueRepo, raceRepo, propsRepo, libraryRepo, calendarRepo, notificationRepo);
+const adminReleaseCommand = new AdminReleaseFinaleCommand(calendarRepo, raceRepo, leagueRepo, propsRepo, notificationRepo);
+const adminOverviewQuery = new AdminFinaleOverviewQuery(calendarRepo, raceRepo, leagueRepo, propsRepo, libraryRepo);
 const lateSeasonPickerCommand = new SetLateSeasonPickerCommand(leagueRepo, propsRepo);
 const libraryQuery = new SeasonQuestionLibraryQuery(libraryRepo, racerRepo);
 const saveCommand = new SaveSeasonPropsCommand(leagueRepo, propsRepo);
@@ -69,6 +76,8 @@ const ViewSchema = z.object({
   racesLeft: z.number(),
   seasonEnded: z.boolean(),
   finaleReleased: z.boolean(),
+  finaleAdminReleased: z.boolean(),
+  lastRaceStarted: z.boolean(),
   scale: z.array(ScaleStepSchema),
   questions: z.array(QuestionDTOSchema),
   latePickUserIds: z.array(z.string()),
@@ -109,7 +118,7 @@ const FinaleSchema = z.object({
   medals: z.object({ players: z.array(FinaleMedalRowSchema), teams: z.array(FinaleMedalRowSchema) }),
   awards: z.array(
     z.object({
-      id: z.enum(["highScore", "consistent", "propWizard", "traveler", "hotStreak"]),
+      id: z.enum(["highScore", "mostMedals", "highestAverage", "consistent", "propWizard", "traveler", "hotStreak"]),
       title: z.string(),
       blurb: z.string(),
       winners: z.array(z.object({ id: z.string(), name: z.string(), value: z.string() })),
@@ -174,13 +183,41 @@ export const seasonPropsRouter = {
     }),
 
   finale: {
-    /** The season finale: players get it once released; commissioners can preview it any time. */
+    /** The season finale: players get it once the admins and the commissioner have both released it. */
     get: authed
-      .input(z.object({ leagueId: z.string().uuid(), preview: z.boolean().optional() }))
+      .input(z.object({ leagueId: z.string().uuid() }))
       .output(FinaleSchema)
       .handler(async ({ context, input }) =>
-        finaleQuery.execute({ actorUserId: context.session.user.id, leagueId: input.leagueId, preview: input.preview }),
+        finaleQuery.execute({ actorUserId: context.session.user.id, leagueId: input.leagueId }),
       ),
+
+    /** Admin: each season's finale status for a motorsport (what is left to grade, who has released). */
+    adminOverview: adminOnly
+      .input(z.object({ motorsportId: z.string().uuid() }))
+      .output(z.object({
+        motorsportId: z.string(),
+        seasons: z.array(z.object({
+          seasonId: z.string(),
+          label: z.string(),
+          lastRaceStarted: z.boolean(),
+          racesTotal: z.number(),
+          racesUngraded: z.number(),
+          questionsUnanswered: z.number(),
+          released: z.boolean(),
+          leagueCount: z.number(),
+          leaguesReleased: z.number(),
+        })),
+      }))
+      .handler(async ({ input }) => adminOverviewQuery.execute(input.motorsportId)),
+
+    /** Admin: release (or take back) the admins' half of the finale for every league racing the season. */
+    adminRelease: adminOnly
+      .input(z.object({ motorsportId: z.string().uuid(), seasonId: z.string().uuid(), release: z.boolean() }))
+      .output(z.object({ ok: z.literal(true) }))
+      .handler(async ({ input }) => {
+        await adminReleaseCommand.execute(input);
+        return { ok: true as const };
+      }),
 
     /** Admin: watch the finale for any league's current standings. */
     adminPreview: adminOnly

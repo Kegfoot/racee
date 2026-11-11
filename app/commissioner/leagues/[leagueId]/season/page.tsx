@@ -142,7 +142,7 @@ export default function CommissionerSeasonPage() {
             </CardContent>
           </Card>
 
-          <FinaleCard leagueId={leagueId} ended={data.current.ended} unscoredRaces={data.current.unscoredRaces} onError={setError} />
+          <FinaleCard leagueId={leagueId} unscoredRaces={data.current.unscoredRaces} onError={setError} />
 
           {data.current.undoSeasonLabel && (
             <Card>

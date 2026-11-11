@@ -149,10 +149,9 @@ export class SeasonProps {
     this.props = { ...this.props, finaleReleasedAt: at };
   }
 
-  /** Has the finale been released since the season ended at `seasonEndedAt`? */
-  isFinaleReleased(seasonEndedAt: string | null): boolean {
-    const released = this.props.finaleReleasedAt;
-    return released !== null && seasonEndedAt !== null && released >= seasonEndedAt;
+  /** Has the commissioner released this league's finale? */
+  isFinaleReleased(): boolean {
+    return this.props.finaleReleasedAt !== null;
   }
 
   removeUser(userId: string): void {

@@ -31,6 +31,10 @@ export type SeasonPropsViewResult = {
   seasonEnded: boolean;
   /** The commissioner has released the season finale. */
   finaleReleased: boolean;
+  /** The site admins have released it too (always true for leagues not tied to an admin season). */
+  finaleAdminReleased: boolean;
+  /** The season's last race has started, so the final results are hidden until both releases. */
+  lastRaceStarted: boolean;
   scale: ScaleStep[];
   questions: SeasonPropsQuestionDTO[];
   latePickUserIds: string[];

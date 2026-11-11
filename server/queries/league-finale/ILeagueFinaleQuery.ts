@@ -33,9 +33,8 @@ export type LeagueFinaleResult = {
 
 export interface ILeagueFinaleQuery {
   /**
-   * `preview` lets a commissioner (or, with `asAdmin`, a site admin) watch the
-   * finale for the league's current standings before it's released, or midway
-   * through a season.
+   * `preview` (site admins only, with `asAdmin`) lets them watch any league's
+   * finale with its current standings before it's released.
    */
   execute(input: { actorUserId: string; leagueId: string; preview?: boolean; asAdmin?: boolean }): Promise<LeagueFinaleResult>;
 }

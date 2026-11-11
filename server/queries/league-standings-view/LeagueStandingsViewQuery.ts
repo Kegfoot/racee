@@ -6,8 +6,10 @@ import type {
   ITeamRepository,
   ISeasonPropsRepository,
   ISeasonQuestionLibraryRepository,
+  IMotorsportCalendarRepository,
 } from "@/server/repositories";
 import { loadSeasonBonus } from "@/server/queries/shared/season-bonus";
+import { loadFinaleGate } from "@/server/queries/shared/finale-gate";
 import { NotFoundError } from "@/server/domain/errors";
 import { assertLeagueMember } from "@/server/roles/league";
 import type {
@@ -37,6 +39,7 @@ export class LeagueStandingsViewQuery implements ILeagueStandingsViewQuery {
     private teams: ITeamRepository,
     private seasonProps: ISeasonPropsRepository,
     private seasonQuestions: ISeasonQuestionLibraryRepository,
+    private calendars: IMotorsportCalendarRepository,
   ) {}
 
   async execute(actorUserId: string, leagueId: string): Promise<LeagueStandingsViewResult> {
@@ -135,10 +138,10 @@ export class LeagueStandingsViewQuery implements ILeagueStandingsViewQuery {
       .filter(t => !listedTeamIds.has(t.teamId))
       .map(t => ({ teamId: t.teamId, total: bonus.teams.get(t.teamId) ?? 0, seasonBonus: bonus.teams.get(t.teamId) ?? 0, rawTotal: 0, propTotal: 0, raceScores: [] }));
 
-    // Once the season has ended, the final standings stay hidden from players until the
-    // commissioner releases the finale. Commissioners still see them (to finish grading).
-    const seasonProps = await this.seasonProps.find(league.leagueId, league.seasonKey);
-    const finalePending = league.isSeasonEnded && !seasonProps?.isFinaleReleased(league.seasonEndedAt);
+    // Once the season's last race has started, the standings stay hidden from players until the
+    // admins and the commissioner have both released the finale. Commissioners still see them (to finish grading).
+    const gate = await loadFinaleGate({ props: this.seasonProps, calendars: this.calendars }, league, races);
+    const finalePending = gate.phase === "pending";
     const hideFromViewer = finalePending && !league.canManage(actorUserId);
 
     return {
